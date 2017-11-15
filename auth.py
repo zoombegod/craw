@@ -56,6 +56,17 @@ class CrawXiaoMQ(object):
                 i = i + 1
         return cont_respone, topics_id
 
+        n = 0
+        if has_topic and self.num:
+            return True
+        else:
+            while n > 0:
+
+        
+    def struct_end_time(self, create_time):
+        time_ms = int(re.search(r'\.\d{3}', create_time).group().split('.')[1]) + 1
+        return re.sub(r'\.\d{3}', '.%03d' + time_ms , create_time)
+        
 
     def get_cont(self, groups):
         group_key = groups.keys()#获取所有的groupid
@@ -67,31 +78,35 @@ class CrawXiaoMQ(object):
             i = 0
             cont_respone, topics_id = self._get_topics(str(group_key[key_n - 1]))
             topics_dict = cont_respone[u'resp_data'][u'topics']
-            while i < self.num:
-                if 'talk' in topics_dict[i]:
-                    if self.has_file(topics_dict[i][u'talk']):
-                        author = topics_dict[i][u'talk'][u'owner'][u'name']
-                        if 'text' in topics_dict[i][u'talk']:
-                            text = topics_dict[i][u'talk'][u'text']
-                            text = text + '<br>附件:%s' % (topics_dict[i][u'talk'][u'files'][0][u'name'])
-                        else:
-                            text = '<br>附件:%s' % (topics_dict[i][u'talk'][u'files'][0][u'name'])
-                    elif 'text' not in topics_dict[i][u'talk'] and 'images' in topics_dict[i][u'talk']:
-                        text = '<img src="%s" />' % (topics_dict[i][u'talk'][u'images'][0][u'large'][u'url'])
-                    else:
-                        author = topics_dict[i][u'talk'][u'owner'][u'name']
-                        text = topics_dict[i][u'talk'][u'text']
-                else:
-                   #print topics_dict[i]
-                    author = topics_dict[i][u'question'][u'questionee'][u'name']
-                    text = topics_dict[i][u'question'][u'text']
 
-                text = urllib.unquote(cgi.escape(re.sub(regex, '', text)))
-                html = '''
-                <tr><td>di %d tiao 作者:%s</td>
-                <td>内容:%s</td></tr><tr></tr>''' % (i,author, text)
-                f.write(html)
-                i = i + 1
+            while len(topics_dict) > 0:
+                while i < self.num:
+                    if 'talk' in topics_dict[i]:
+                        if self.has_file(topics_dict[i][u'talk']):
+                            author = topics_dict[i][u'talk'][u'owner'][u'name']
+                            if 'text' in topics_dict[i][u'talk']:
+                                text = topics_dict[i][u'talk'][u'text']
+                                text = text + '<br>附件:%s' % (topics_dict[i][u'talk'][u'files'][0][u'name'])
+                            else:
+                                text = '<br>附件:%s' % (topics_dict[i][u'talk'][u'files'][0][u'name'])
+                        elif 'text' not in topics_dict[i][u'talk'] and 'images' in topics_dict[i][u'talk']:
+                            text = '<img src="%s" />' % (topics_dict[i][u'talk'][u'images'][0][u'large'][u'url'])
+                        else:
+                            author = topics_dict[i][u'talk'][u'owner'][u'name']
+                            text = topics_dict[i][u'talk'][u'text']
+                    else:
+                       #print topics_dict[i]
+                        author = topics_dict[i][u'question'][u'questionee'][u'name']
+                        text = topics_dict[i][u'question'][u'text']
+
+                    text = urllib.unquote(cgi.escape(re.sub(regex, '', text)))
+                    html = '''
+                    <tr><td>di %d tiao 作者:%s</td>
+                    <td>内容:%s</td></tr><tr></tr>''' % (i,author, text)
+                    f.write(html)
+                    i = i + 1
+                self.end_time = struct_end_time(topics_dict[self.num - 1]['create_time'])
+                topics_dict = self._get_topics(str(group_key[key_n - 1]))
             key_n = key_n - 1
         f.write("</table></body></html>")
         f.close()
