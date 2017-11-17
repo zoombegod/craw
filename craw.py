@@ -62,7 +62,6 @@ class CrawXiaoMQ(object):
         else:
             while n > 0:
 
-        
     def struct_end_time(self, create_time):
         time_ms = int(re.search(r'\.\d{3}', create_time).group().split('.')[1]) + 1
         return re.sub(r'\.\d{3}', '.%03d' + time_ms , create_time)
