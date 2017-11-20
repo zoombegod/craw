@@ -15,8 +15,7 @@ class CrawXiaoMQ(object):
     def __init__(self, token):#构造请求头、定义最后时间、定义初始的url
     #定义初始参数，token，URL，请求头
         self._headers = {"Authorization" : token,
-                         "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; "\
-                         "x64; rv:57.0) Gecko/20100101 Firefox/57.0"}
+                         "User-Agent": agent}
         print self._headers
         self._base_url = 'https://api.xiaomiquan.com/v1.8/'#未被引用
         self._groups = {}#未被引用
@@ -27,7 +26,14 @@ class CrawXiaoMQ(object):
         self.topic_num = 1
         self.topic_id = []
         with open('db.html', 'w') as self.html:#创建一个存放数据的html文件
-            self.html.write('<html><head><meta http-equiv="content-type" content="text/html; charset=utf-8"><body><table>')
+            self.html.write('<html><head><meta http-equiv="content-type"' \
+                            'content="text/html; charset=utf-8">' \
+                           '<style type="text/css">p {margin-left: 18px;} ' \
+                            'td {color: #eee8d5; background-color:#073642; ' \
+                                'border: 1px solid black;} .cont {width: 400px;' \
+                             'line-height: 30px;text-indent: 2em;} ' \
+                            ' .author {width: 60px;}</style><body><table ' \
+                            'cellspacing="5" align="center">')
     def _get_url(self, end_point):
         _list_url = self.list_url + end_point
         return '/'.join(_list_url)
@@ -52,18 +58,15 @@ class CrawXiaoMQ(object):
         topics_id = []
         if '%' not in self.end_time:
             self.end_time = urllib.quote(self.end_time)
-        print self.end_time
         parm = 'topics?count=' + str(self.num) + '&end_time=' + self.end_time
 
         _list_url = ['groups', group_id, parm] #拼接url后缀
         cont_respone = requests.get(self._get_url(_list_url),
                                     headers=self._headers) #提交requests请求
-        print cont_respone.request.url
         cont_respone = cont_respone.json()
         if cont_respone[u'succeeded']:
             i = 0
             self.num = len(cont_respone[u'resp_data'][u'topics'])
-            print 'self.num is %d' % (self.num)
             return cont_respone
         else:
             return False
@@ -73,11 +76,10 @@ class CrawXiaoMQ(object):
         return re.sub(r'\.\d{3}', '.%03d' % time_ms , create_time)
     def write_db(self, topics_dict, f):
         i = 0
-        regex = r'<e\stype="hashtag".*/>|<e\stype.*?href="|"\stitle=.*?\scache=.*?/>|"\s/>'
+        regex = r'<e\stype="hashtag".*?/>|<e\stype.*?href="|"\stitle=.*?\scache=.*?/>|"\s/>'
             #遍历每次请求的20个主题
         while i < self.num:
         #判断是不是提问
-            print 'i is %d, 主题数: %d' % (i, self.num)
             if 'talk' in topics_dict[i]:
                 #判断是否有附件
                 if self.has_file(topics_dict[i][u'talk']):
@@ -85,9 +87,9 @@ class CrawXiaoMQ(object):
                     #判断是否有文字内容
                     if 'text' in topics_dict[i][u'talk']:
                         text = topics_dict[i][u'talk'][u'text']
-                        text = text + '<br>附件:%s' % (topics_dict[i][u'talk'][u'files'][0][u'name'])
+                        text = text + '  附件:%s' % (topics_dict[i][u'talk'][u'files'][0][u'name'])
                     else:
-                        text = '<br>附件:%s' % (topics_dict[i][u'talk'][u'files'][0][u'name'])
+                        text = '  附件:%s' % (topics_dict[i][u'talk'][u'files'][0][u'name'])
                 elif 'text' not in topics_dict[i][u'talk'] and 'images' in topics_dict[i][u'talk']:
 
                     author = topics_dict[i][u'talk'][u'owner'][u'name']
@@ -110,11 +112,13 @@ class CrawXiaoMQ(object):
 
             text = urllib.unquote(cgi.escape(re.sub(regex, '', text)))
             html = '''
-            <tr><div class="author"><td>[%s]第 %d 条 作者:%s</td></div>
-            <div class="cont"><td>内容:%s</td></div></tr>''' % \
+            <tr><td class="author"><p>[%s]</p><p>第 %d 条 作者:%s</p></td>
+            <td class="cont">内容:%s</td></tr>''' % \
             (topics_dict[0]['group']['name'], self.topic_num, author, text)
             f.write(html)
             self.topic_id.append(topics_dict[i]['topic_id'])
+            print "正在写入[%s]第%d条" % (topics_dict[0]['group']['name'],
+                                                self.topic_num) 
             self.topic_num += 1
             i = i + 1
 
@@ -139,7 +143,6 @@ class CrawXiaoMQ(object):
                 #遍历每次请求的20个主题
                 self.write_db(topics_dict, f)
                 self.end_time = self.struct_end_time(topics_dict[self.num - 1]['create_time'])
-                print 'gou zao hou', self.end_time
                 self.num = 20
                 topics_dict = self._get_topics(str(group_key[key_n - 1]))
                 topics_dict = topics_dict['resp_data'][u'topics']
@@ -148,16 +151,16 @@ class CrawXiaoMQ(object):
                     break
 
             self.num = 20
-            print '结束一个圈子后的self.num值', self.num
             self.end_time = urllib.quote(time.strftime("%Y-%m-%dT%H:%M:%S.679+0800",
                                        time.localtime()))#刷新最后时间
-            self.topic_num = 0
+            self.topic_num = 1
             key_n = key_n - 1
         f.write("</table></body></html>")
         f.close()
 
 
 if __name__ == '__main__':
+    agent = raw_input("Please input your User-Agent:")
     token = raw_input("Please input your token:")
     craw = CrawXiaoMQ(token)#传入token，1.构造headers 2.初始url 3.定义最后时间
     groups = craw._get_groups()
