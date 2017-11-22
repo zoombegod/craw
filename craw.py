@@ -17,8 +17,6 @@ class CrawXiaoMQ(object):
         self._headers = {"Authorization" : token,
                          "User-Agent": agent}
         print self._headers
-        self._base_url = 'https://api.xiaomiquan.com/v1.8/'#未被引用
-        self._groups = {}#未被引用
         self.list_url = ['https://api.xiaomiquan.com/v1.8']
         self.end_time = urllib.quote(time.strftime("%Y-%m-%dT%H:%M:%S.679+0800", time.localtime())) #定义最后时间
         self.data = {}
@@ -37,6 +35,15 @@ class CrawXiaoMQ(object):
     def _get_url(self, end_point):
         _list_url = self.list_url + end_point
         return '/'.join(_list_url)
+    def downloadfile(self, groupid):
+        for group_id in groupid:
+            down_parm = 'files?count=20&end_time=' + self.end_time
+            _down_url = ['groups', group_id, down_parm]
+            down_fileids = requests.get(self._get_url(_down_url),
+                                        headers=self._headers).json() #获取ID号
+            if down_fileids['succeeded']:
+                
+
 
     def has_file(self, topic_talk):#判断是否有附件
         return 'files' in topic_talk
@@ -157,11 +164,15 @@ class CrawXiaoMQ(object):
             key_n = key_n - 1
         f.write("</table></body></html>")
         f.close()
+        if self.is_down = 'y':
+            print '所有主题爬去完毕，开始下载附件...'
+            self.downloadfile(group_key)
 
 
 if __name__ == '__main__':
     agent = raw_input("Please input your User-Agent:")
     token = raw_input("Please input your token:")
+    self.is_down = raw_input("download file?('y/n')")
     craw = CrawXiaoMQ(token)#传入token，1.构造headers 2.初始url 3.定义最后时间
     groups = craw._get_groups()
     craw.get_cont(groups)
