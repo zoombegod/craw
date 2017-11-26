@@ -6,6 +6,8 @@ import time
 import re
 import cgi
 import sys
+import os
+import HTMLParser
 reload(sys)
 sys.setdefaultencoding('utf8')
 
@@ -24,6 +26,7 @@ class CrawXiaoMQ(object):
         self.topic_num = 1
         self.topic_id = []
         self._groups = {}
+        self._files_id = {}
         with open('db.html', 'w') as self.html:#创建一个存放数据的html文件
             self.html.write('<html><head><meta http-equiv="content-type"' \
                             'content="text/html; charset=utf-8">' \
@@ -36,15 +39,50 @@ class CrawXiaoMQ(object):
     def _get_url(self, end_point):
         _list_url = self.list_url + end_point
         return '/'.join(_list_url)
-#    def downloadfile(self, groupid):
-#        for group_id in groupid:
-#            down_parm = 'files?count=20&end_time=' + self.end_time
-#            _down_url = ['groups', group_id, down_parm]
-#            down_fileids = requests.get(self._get_url(_down_url),
-#                                        headers=self._headers).json() #获取ID号
-#            if down_fileids['succeeded']:
-#                
-
+    def _get_fileid(self, groupid):
+        files_dict = {}
+        print '获取所有附件ID'
+        for group_id in groupid:
+            while True:
+                down_parm = "files?count=20&end_time=" + self.end_time
+                _down_url = ['groups', str(group_id), down_parm]
+                down_fileids = requests.get(self._get_url(_down_url),
+                                            headers=self._headers).json()#请求获取一组文件ID号
+                files_iddata =  down_fileids['resp_data']['files']
+                self.num = len(files_iddata)    #获取当前请求有多少ID
+                n = 0
+                if self.num > 0:
+                       while n < self.num:
+                           files_dict[files_iddata[n]['file']['file_id']] = \
+                           files_iddata[n]['file']['name']
+                           n += 1
+                else:
+                    break
+                #最后一个附件的创建时间
+                create_time = files_iddata[self.num - 1]['file']['create_time']
+                self.end_time = urllib.quote(self.struct_end_time(create_time))
+                n = 0
+                self.num = 20
+            self.end_time = urllib.quote(time.strftime("%Y-%m-%dT%H:%M:%S.679+0800",
+                                       time.localtime()))#刷新最后时间
+        return files_dict
+    def downloadfile(self, groupid):
+        if not os.path.exists('./download'):
+            os.mkdir('./download')
+        html_parser = HTMLParser.HTMLParser()
+        files_dict = self._get_fileid(groupid)
+        for id in files_dict.keys():
+            down_url = "https://api.xiaomiquan.com/v1.8/files/" + str(id) + \
+            "/download_url" #获取文件真实下载地址
+            file_url =  requests.get(down_url,
+                                     headers=self._headers).json()['resp_data']['download_url']
+            r = requests.get(file_url, headers=self._headers, stream=True)
+            filename = html_parser.unescape(files_dict[id].replace(" ","_"))
+            filename = filename.replace("\'", "")
+            with open('./download/' + filename, 'wb') as fd:
+                print '正在下载->', filename
+                for chunk in r.iter_content(1024 * 100):
+                    fd.write(chunk)
 
     def has_file(self, topic_talk):#判断是否有附件
         return 'files' in topic_talk
@@ -126,7 +164,7 @@ class CrawXiaoMQ(object):
             f.write(html)
             self.topic_id.append(topics_dict[i]['topic_id'])
             print "正在写入[%s]第%d条" % (topics_dict[0]['group']['name'],
-                                                self.topic_num) 
+                                                self.topic_num)
             self.topic_num += 1
             i = i + 1
 
@@ -165,15 +203,15 @@ class CrawXiaoMQ(object):
             key_n = key_n - 1
         f.write("</table></body></html>")
         f.close()
-#        if self.is_down = 'y':
-#            print '所有主题爬去完毕，开始下载附件...'
-#            self.downloadfile(group_key)
+        if is_down == 'y':
+            print '所有主题爬取完毕，开始下载附件...'
+            self.downloadfile(group_key)
 
 
 if __name__ == '__main__':
     agent = raw_input("Please input your User-Agent:")
     token = raw_input("Please input your token:")
-#    self.is_down = raw_input("download file?('y/n')")
+    is_down = raw_input("download file?('y/n')")
     craw = CrawXiaoMQ(token)#传入token，1.构造headers 2.初始url 3.定义最后时间
     groups = craw._get_groups()
     craw.get_cont(groups)
