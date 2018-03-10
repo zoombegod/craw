@@ -80,7 +80,7 @@ class CrawXiaoMQ(object):
             filename = html_parser.unescape(files_dict[id].replace(" ","_"))
             filename = filename.replace("\'", "")
             with open('./download/' + filename, 'wb') as fd:
-                print '正在下载->', filename
+                print u'正在下载->', filename
                 for chunk in r.iter_content(1024 * 100):
                     fd.write(chunk)
 
