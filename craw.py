@@ -19,7 +19,7 @@ class CrawXiaoMQ(object):
         self._headers = {"Authorization" : token,
                          "User-Agent": agent}
         print self._headers
-        self.list_url = ['https://api.xiaomiquan.com/v1.8']
+        self.list_url = ['https://api.zsxq.com/v1.8']
         self.end_time = urllib.quote(time.strftime("%Y-%m-%dT%H:%M:%S.679+0800", time.localtime())) #定义最后时间
         self.data = {}
         self.num = 20#每次请求的主题数
@@ -72,7 +72,7 @@ class CrawXiaoMQ(object):
         html_parser = HTMLParser.HTMLParser()
         files_dict = self._get_fileid(groupid)
         for id in files_dict.keys():
-            down_url = "https://api.xiaomiquan.com/v1.8/files/" + str(id) + \
+            down_url = "https://api.zsxq.com/v1.8/files/" + str(id) + \
             "/download_url" #获取文件真实下载地址
             file_url =  requests.get(down_url,
                                      headers=self._headers).json()['resp_data']['download_url']
@@ -97,6 +97,7 @@ class CrawXiaoMQ(object):
                 group_id = group[u'group_id']
                 group_name = group[u'name']
                 self._groups[group_id] = group_name
+        #删除你不想要的group
         del self._groups[758548854] #del help topic
         return self._groups
 
